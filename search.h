@@ -4,11 +4,13 @@
 #include <stdint.h>
 #include <time.h>
 #include "chess_board.h"
+#include "nnue.h"
 #include "transposition_table.h"
 #include "uci.h"
 #include "utility.h"
 
 typedef struct SearchThread {
+    Accumulator accumulator[512]; // TODO: Where to store accumulator and sizing. Struct alignment?
     ChessBoard board;
     TT *tt;
     uint64_t startNs; // TODO: Could change implementation
@@ -26,10 +28,12 @@ static inline uint64_t getTimeNs() {
     return (uint64_t) ts.tv_sec * 1000000000ULL + (uint64_t) ts.tv_nsec;
 }
 
-static inline void createSearchThread(SearchThread *st, const ChessBoard *restrict board, TT *tt, uint64_t maxSearchTimeNs, bool print) {
+static inline void createSearchThread(SearchThread *st, const ChessBoard *restrict board, TT *tt, Accumulator *accumulator, uint64_t maxSearchTimeNs, bool print) {
     st->board = *board; // TODO: The history pointer is a shallow copy, consider using a deep copy
     st->tt = tt;
+    st->accumulator[0] = *accumulator;
     st->maxSearchTimeNs = maxSearchTimeNs;
+    st->nodes = 0;
     st->ply = 0;
     st->print = print;
     st->stop = false;

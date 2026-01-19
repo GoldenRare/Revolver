@@ -18,8 +18,6 @@ typedef struct SearchHelper {
     Move pv[MAX_DEPTH]; // TODO: Is it worth saving space by making triangular?
 } SearchHelper;
 
-static Accumulator accumulator[(MAX_DEPTH + 1) * 2]; // TODO: Where to store accumulator and sizing
-
 static inline void updatePV(Move move, Move *restrict currentPV, const Move *restrict childrenPV) {
     *currentPV++ = move;
     while((*currentPV++ = *childrenPV++));
@@ -73,8 +71,8 @@ static Score quiescenceSearch(Score alpha, Score beta, SearchHelper *restrict sh
     /*                   */
     
     bool checkers = getCheckers(board);
-    const Accumulator *currentAccumulator = &accumulator[st->ply    ];
-    Accumulator       *childAccumulator   = &accumulator[st->ply + 1];
+    const Accumulator *currentAccumulator = &st->accumulator[st->ply    ];
+    Accumulator       *childAccumulator   = &st->accumulator[st->ply + 1];
     /* Stand Pat */
     Score bestScore = checkers ? -CHECKMATE + st->ply : evaluation(currentAccumulator, board->sideToMove); // TODO: Could be evaluating a stalemate
     if (bestScore > alpha) {
@@ -143,8 +141,8 @@ static Score alphaBeta(Score alpha, Score beta, Depth depth, Node node, SearchHe
 
     ChessBoardHistory history;
     SearchHelper *child = sh + 1;
-    const Accumulator *currentAccumulator = &accumulator[st->ply    ];
-    Accumulator       *childAccumulator   = &accumulator[st->ply + 1];
+    const Accumulator *currentAccumulator = &st->accumulator[st->ply    ];
+    Accumulator       *childAccumulator   = &st->accumulator[st->ply + 1];
 
     bool checkers = getCheckers(board);
     Score staticEvaluation = checkers ? -INFINITE 
@@ -230,7 +228,6 @@ void* startSearch(void *searchThread) {
     
     char pvString[2048], bestMove[6], ponderMove[6];
     Score score, alpha = -INFINITE, beta = INFINITE;
-    st->nodes = 0;
     st->startNs = getTimeNs();
     for (Depth depth = 1; depth && !outOfTime(st); depth++) {
         score = alphaBeta(alpha, beta, depth, ROOT, sh, st);
@@ -261,8 +258,7 @@ void startSearchThreads(UCI_Configuration *restrict config, uint64_t searchTimeN
 
     pthread_t th;
     SearchThread st;
-    createSearchThread(&st, &config->board, &config->tt, searchTimeNs, true);
-    accumulator[0] = config->accumulator;
+    createSearchThread(&st, &config->board, &config->tt, &config->accumulator, searchTimeNs, true);
     pthread_create(&th, nullptr, startSearch, &st);
     pthread_join(th, nullptr);
 }
