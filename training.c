@@ -6,10 +6,11 @@
 #include <time.h>
 #include "training.h"
 #include "chess_board.h"
+#include "move_generator.h"
+#include "nnue.h"
 #include "search.h"
 #include "transposition_table.h"
 #include "utility.h"
-#include "move_generator.h"
 
 constexpr int MAX_RANDOM_MOVES = 10;
 
@@ -68,7 +69,8 @@ static inline bool isEndOfGame(const ChessBoard *restrict board, const MoveObjec
     return isCheckmate(moveObj->score) || isStalemate(moveObj->score, moveObj->move) || isDraw(board);
 }
 
-static void playRandomMoves(ChessBoard *board, ChessBoardHistory *history, TrainingThread *tt) {
+// Randomly plays the first 5-10 moves
+static void playRandomMoves(ChessBoard *restrict board, ChessBoardHistory *restrict history, Accumulator *restrict accumulator, TrainingThread *tt) {
     int numberOfRandomMoves = random64BitNumber(&tt->seed) % 6 + 5;
     for (int i = 0; i < numberOfRandomMoves; i++) {
         MoveObject moveList[MAX_MOVES];
@@ -80,7 +82,7 @@ static void playRandomMoves(ChessBoard *board, ChessBoardHistory *history, Train
             MoveObject *moveObj = &startList[random64BitNumber(&tt->seed) % moveListSize];
             Move move = moveObj->move;
             if (isLegalMove(board, move)) {
-                makeMove(board, &history[i], nullptr, move);
+                makeMove(board, &history[i], accumulator, move);
                 break;
             }
             moveListSize--;
@@ -91,6 +93,7 @@ static void playRandomMoves(ChessBoard *board, ChessBoardHistory *history, Train
 
 static void playGame(TrainingThread *tt, GameData *restrict previous) {
     ChessBoard *board = &tt->st.board;
+    Accumulator *accumulator = tt->st.accumulator;
     ChessBoardHistory history;
     GameData current;
     MoveObject *bestMove = startSearch(&tt->st);
@@ -107,18 +110,18 @@ static void playGame(TrainingThread *tt, GameData *restrict previous) {
         writeGameData(previous, tt->file, outcome);
         return;
     }
-    makeMove(board, &history, nullptr, bestMove->move);
+    makeMove(board, &history, accumulator, bestMove->move);
     playGame(tt, previous);
 }
 
-// Randomly plays the first 5-10 moves
 static void playRandomGame(TrainingThread *tt) {
-    ChessBoard board = {0};
-    ChessBoardHistory history[MAX_RANDOM_MOVES + 1] = {0};
+    ChessBoard board;
+    ChessBoardHistory history[MAX_RANDOM_MOVES + 1];
+    Accumulator accumulator;
     GameData dummy = {.prev = nullptr};
-    parseFEN(&board, history, nullptr, START_POS);
-    playRandomMoves(&board, &history[1], tt);
-    createSearchThread(&tt->st, &board, tt->st.tt, 1000000000 / 2, false);
+    parseFEN(&board, history, &accumulator, START_POS);
+    playRandomMoves(&board, &history[1], &accumulator, tt);
+    createSearchThread(&tt->st, &board, tt->st.tt, &accumulator, 1000000000 / 8, false);
     playGame(tt, &dummy); // TODO: Is it safe to write data for position that randomly is draw?
 }
 
