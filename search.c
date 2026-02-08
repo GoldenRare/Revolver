@@ -171,29 +171,35 @@ static Score alphaBeta(Score alpha, Score beta, Depth depth, Node node, SearchHe
     Score bestScore = -INFINITE, oldAlpha = alpha;
     Move  bestMove  =   NO_MOVE, move;
 
-    /* 6) Move Ordering */
+    /** 6) Check Extensions **/
+    Depth extensions = depth < MAX_DEPTH && checkers;
+    /**                     **/
+
+    Depth newDepth = depth - 1 + extensions;
+
+    /* 7) Move Ordering */
     while ((move = getNextBestMove(board, &ms))) {
         if (!isLegalMove(board, move)) continue;
         legalMoves++;
 
         bool expectedNonPvNode = !isPvNode || legalMoves > 1;
-        /** 7) Futility Pruning **/
+        /** 8) Futility Pruning **/
         if (expectedNonPvNode && depth < 4 && !checkers && !isInteresting(board, move) && getReverseFutilityPruningScore(staticEvaluation, depth) <= alpha) continue;
         /**                     **/
 
-        /** 8) Late Move Reductions **/
-        int reductions = legalMoves > 1 && depth > 1 ? 2 : 1;
+        /** 9) Late Move Reductions **/
+        Depth reductions = legalMoves > 1 && depth > 1;
         /**                         **/
 
         st->ply++;
         *childAccumulator = *currentAccumulator;
         makeMove(board, &history, childAccumulator, move);
 
-        /* 9) Principal Variation Search */
+        /* 10) Principal Variation Search */
         Score score;
-        if (expectedNonPvNode) score = -alphaBeta(-alpha - 1, -alpha, depth - reductions, NON_PV, child, st);
-        if (isPvNode && (legalMoves == 1 || score > alpha)) score = -alphaBeta(-beta, -alpha, depth - 1, PV, child, st);
-        /*                               */
+        if (expectedNonPvNode) score = -alphaBeta(-alpha - 1, -alpha, newDepth - reductions, NON_PV, child, st);
+        if (isPvNode && (legalMoves == 1 || score > alpha)) score = -alphaBeta(-beta, -alpha, newDepth, PV, child, st);
+        /*                                */
         
         undoMove(board, move);
         st->ply--;
@@ -213,7 +219,7 @@ static Score alphaBeta(Score alpha, Score beta, Depth depth, Node node, SearchHe
     }
     /*                  */
 
-    /* 10) Checkmate and Stalemate Detection */
+    /* 11) Checkmate and Stalemate Detection */
     if (!legalMoves) bestScore = checkers ? -CHECKMATE + st->ply : DRAW; // TODO: Should this be considered EXACT bound?
     /*                                       */
 
