@@ -1,14 +1,9 @@
+#include <stdint.h>
 #include "move_selector.h"
 #include "move_generator.h"
 #include "utility.h"
 
 constexpr Score PIECE_VALUE[PIECE_TYPES] = {0, 100, 300, 306, 500, 900, 0};
-
-static inline void swap(MoveObject *mo1, MoveObject *mo2) {
-    MoveObject temp = *mo1;
-    *mo1 = *mo2;
-    *mo2 = temp;
-}
 
 static void scoreMoves(const ChessBoard *restrict board, MoveSelector *restrict ms) {
     MoveObject *startList = ms->startList;
@@ -26,11 +21,16 @@ static void scoreMoves(const ChessBoard *restrict board, MoveSelector *restrict 
 }
 
 static Move getNextHighestScoringMove(MoveSelector *restrict ms) {
-    MoveObject *highestScoreMove = &(MoveObject) {NO_MOVE, -1}; // TODO: Score must be the lowest possible
+    MoveObject *highestScoreMove = nullptr;
+    int16_t bestScore = -1; // TODO: Score must be the lowest possible
     for (MoveObject *moveObj = ms->startList; moveObj < ms->endList; moveObj++)
-        if (moveObj->move != ms->ttMove && moveObj->score > highestScoreMove->score) highestScoreMove = moveObj;
+        if (moveObj->move != ms->ttMove && moveObj->score > bestScore) {
+            bestScore = moveObj->score;
+            highestScoreMove = moveObj;
+        }
+    if (!highestScoreMove) return NO_MOVE;
     Move bestMove = highestScoreMove->move;
-    if (highestScoreMove->score != -1) swap(highestScoreMove, ms->startList++);
+    *highestScoreMove = *ms->startList++;
     return bestMove;
 }
 
