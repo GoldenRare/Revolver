@@ -1,4 +1,9 @@
-EXECUTABLE = Revolver.exe
+ifeq ($(OS), Windows_NT)
+	EXECUTABLE = Revolver.exe
+else
+	EXECUTABLE = Revolver
+endif
+
 SOURCES = $(wildcard *.c)
 OBJECTS = $(SOURCES:.c=.o)
 
