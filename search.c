@@ -228,7 +228,7 @@ static Score alphaBeta(Score alpha, Score beta, Depth depth, Node node, SearchHe
 }
 
 void* startSearch(void *searchThread) {
-    constexpr Score ASPIRATION_WINDOW = 25;
+    constexpr Score ASPIRATION_WINDOW = 50;
     SearchThread *st = searchThread;
     SearchHelper sh[MAX_DEPTH + 1];
     
