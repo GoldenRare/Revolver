@@ -234,22 +234,27 @@ void* startSearch(void *searchThread) {
     
     char pvString[2048], bestMove[6], ponderMove[6];
     Score score, alpha = -INFINITE, beta = INFINITE;
+    Depth depth = 1;
     st->startNs = getTimeNs();
-    for (Depth depth = 1; depth && !outOfTime(st); depth++) {
+    while (depth && !outOfTime(st)) {
         score = alphaBeta(alpha, beta, depth, ROOT, sh, st);
-        if (score > alpha && score < beta && !st->stop) {
+
+        if (st->stop) break;
+
+        if (score <= alpha) alpha -= ASPIRATION_WINDOW;
+        else if (score >= beta) beta += ASPIRATION_WINDOW;
+        else {
             alpha = score - ASPIRATION_WINDOW;
             beta = score + ASPIRATION_WINDOW;
             
             st->bestMove.move  = sh[0].pv[0];
             st->bestMove.score = score;
 
-            pvToString(pvString, bestMove, ponderMove, sh[0].pv);
-            if (st->print) printSearch(depth, score, pvString, st);
-        } else {
-            depth--;
-            alpha = score > alpha ? alpha : -INFINITE;
-            beta  = score < beta  ? beta  :  INFINITE;
+            if (st->print) {
+                pvToString(pvString, bestMove, ponderMove, sh[0].pv);
+                printSearch(depth, score, pvString, st);
+            }
+            depth++;
         }
     }
     if (st->print) {
