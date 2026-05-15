@@ -106,7 +106,7 @@ static void setOption(UCI_Configuration *restrict config) {
 }
 
 static void uci() {
-    puts("id name Revolver 1.0");
+    puts("id name Revolver 2.0");
     puts("id author Deshawn Mohan");
     puts("option name Hash type spin default 16 min 1 max 1024"); // TODO: What to make max?
     puts("option name Threads type spin default 1 min 1 max 255");
